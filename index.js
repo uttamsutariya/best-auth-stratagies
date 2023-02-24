@@ -4,6 +4,7 @@ const express = require("express");
 const helmet = require("helmet");
 const passport = require("passport");
 const { Strategy } = require("passport-google-oauth20");
+const cookieSession = require("cookie-session");
 
 const PORT = 3000;
 
@@ -12,6 +13,8 @@ const app = express();
 const config = {
 	CLIENT_ID: process.env.CLIENT_ID,
 	CLIENT_SECRET: process.env.CLIENT_SECRET,
+	COOKIE_KEY1: process.env.COOKIE_KEY1,
+	COOKIE_KEY2: process.env.COOKIE_KEY2,
 };
 
 const AUTH_OPTIONS = {
@@ -26,12 +29,31 @@ function verifyCallback(accessToken, refreshToken, profile, next) {
 	next(null, profile);
 }
 
+// save session to the cookie
+passport.serializeUser((user, done) => {
+	done(null, user);
+});
+
+// read the session from the cookie
+passport.deserializeUser((obj, done) => {
+	done(null, obj);
+});
+
 passport.use(new Strategy(AUTH_OPTIONS, verifyCallback));
 app.use(helmet());
+app.use(
+	cookieSession({
+		name: "session",
+		maxAge: 24 * 60 * 60 * 1000,
+		keys: [config.COOKIE_KEY1, config.COOKIE_KEY2],
+	})
+);
 app.use(passport.initialize());
+app.use(passport.session());
 
 function checkLoggedIn(req, res, next) {
-	const isLoggedIn = true;
+	// req.user
+	const isLoggedIn = true; // todo
 	if (!isLoggedIn) {
 		return res.status(401).json({
 			error: "You are not logged in",
@@ -52,11 +74,7 @@ app.get(
 	passport.authenticate("google", {
 		failureRedirect: "/failure",
 		successRedirect: "/",
-		session: false,
-	}),
-	(req, res) => {
-		console.log("google called us back");
-	}
+	})
 );
 
 app.get("/auth/logout", (req, res) => {});
